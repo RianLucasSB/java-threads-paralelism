@@ -9,10 +9,10 @@ import java.util.Date;
 import java.util.Locale;
 
 public class Reader extends Thread{
-    private File file;
+    private String file;
     private int threadId;
 
-    public Reader(File file, int threadId) {
+    public Reader(String file, int threadId) {
         this.file = file;
         this.threadId = threadId;
     }
@@ -28,9 +28,7 @@ public class Reader extends Thread{
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         try {
             br = new BufferedReader(new FileReader(file));
-            System.out.println("size: " + file.length());
             while ((line = br.readLine()) != null) {
-
                 String[] transaction = line.split(csvDivisor);
 
                 String transactionId = transaction[0];
@@ -45,6 +43,8 @@ public class Reader extends Thread{
                 String paymentMethod = transaction[9];
                 String country = transaction[10];
                 String city = transaction[11];
+
+                System.out.println(country);
             }
 
         } catch (FileNotFoundException e) {
