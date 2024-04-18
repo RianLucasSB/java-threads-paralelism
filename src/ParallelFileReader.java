@@ -14,11 +14,10 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 public class ParallelFileReader {
-    private static final int BUFFER_SIZE = 5000000; // Adjust as needed
-    private static final int NUM_THREADS = Runtime.getRuntime().availableProcessors() - 1; // Number of available processors
+    private static final int BUFFER_SIZE = 5000000;
+    private static final int NUM_THREADS = Runtime.getRuntime().availableProcessors() - 1;
     private static final Lock channelLock = new ReentrantLock();
 
-    // Total de transações por país
     private static final Map<String, Integer> transactionsByCountryFinalResult = new HashMap<>();
     private static final Map<String, Double> avgPriceByProductFinalResult = new HashMap<>();
     private static final Map<String, Integer> salesByCompanyFinalResult = new HashMap<>();
