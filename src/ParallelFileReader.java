@@ -201,16 +201,12 @@ public class ParallelFileReader {
                     }
                     bytesRead += read;
 
-                    // Process the data (parse CSV lines)
                     buffer.flip();
                     List<String> batchLines = new ArrayList<>();
                     while (buffer.hasRemaining()) {
                         char c = (char) buffer.get();
                         if (c == '\n') {
-                            // End of line reached, parse the line
                             batchLines.add(lineBuilder.toString());
-                            // Process the CSV lin
-
                             lineBuilder.setLength(0);
                         } else {
                             lineBuilder.append(c);
@@ -254,7 +250,7 @@ public class ParallelFileReader {
                     if (v != null) {
                         return 1 + v;
                     } else {
-                        return 1; // or return a default value
+                        return 1;
                     }
                 });
 
@@ -262,7 +258,7 @@ public class ParallelFileReader {
                     if (v != null) {
                         return 1 + v;
                     } else {
-                        return 1; // or return a default value
+                        return 1;
                     }
                 });
 
@@ -270,7 +266,7 @@ public class ParallelFileReader {
                     if (v != null) {
                         return 1 + v;
                     } else {
-                        return 1; // or return a default value
+                        return 1;
                     }
                 });
 
@@ -279,7 +275,7 @@ public class ParallelFileReader {
                     if (v != null) {
                         return 1 + v;
                     } else {
-                        return 1; // or return a default value
+                        return 1;
                     }
                 });
 
@@ -287,7 +283,7 @@ public class ParallelFileReader {
                     if (v != null) {
                         return pricePerUnit + v;
                     } else {
-                        return pricePerUnit; // or return a default value
+                        return pricePerUnit;
                     }
                 });
 
@@ -295,7 +291,7 @@ public class ParallelFileReader {
                     if (v != null) {
                         return 1 + v;
                     } else {
-                        return 1; // or return a default value
+                        return 1;
                     }
                 });
 
@@ -303,7 +299,7 @@ public class ParallelFileReader {
                     if (v != null) {
                         return (pricePerUnit * quantity) + v;
                     } else {
-                        return (pricePerUnit * quantity); // or return a default value
+                        return (pricePerUnit * quantity);
                     }
                 });
 
@@ -311,7 +307,7 @@ public class ParallelFileReader {
                     if (v != null) {
                         return 1 + v;
                     } else {
-                        return 1; // or return a default value
+                        return 1;
                     }
                 });
 
@@ -320,7 +316,7 @@ public class ParallelFileReader {
                     if (v != null) {
                         return totalPrice + v;
                     } else {
-                        return totalPrice; // or return a default value
+                        return totalPrice;
                     }
                 });
             }
