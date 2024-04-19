@@ -27,7 +27,7 @@ public class ParallelFileReader {
     public static void main(String[] args) {
         long startTime = System.currentTimeMillis();
 
-        File file = new File("large_dataset_5M.csv");
+        File file = new File("large_dataset_1M.csv");
 
         long fileSize = file.length();
 
@@ -303,7 +303,7 @@ public class ParallelFileReader {
                     }
                 });
 
-                transactionsByUser.compute(productId, (k, v) -> {
+                transactionsByUser.compute(userId, (k, v) -> {
                     if (v != null) {
                         return 1 + v;
                     } else {
