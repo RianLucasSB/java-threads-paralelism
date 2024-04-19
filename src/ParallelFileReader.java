@@ -3,39 +3,39 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 
 public class ParallelFileReader {
-    private static final int BUFFER_SIZE = 5000000;
+    private static final int BUFFER_SIZE = 50000000;
     private static final int NUM_THREADS = Runtime.getRuntime().availableProcessors() - 1;
     private static final Lock channelLock = new ReentrantLock();
+    private static final Map<String, Integer> transactionsByCountryFinalResult = new ConcurrentHashMap<>();
+    private static final Map<String, Double> totalSalesByProduct = new ConcurrentHashMap<>();
+    private static final Map<String, Integer> totalSalesByProductQuantity = new ConcurrentHashMap<>();
+    private static final Map<String, Integer> transactionsByUser = new ConcurrentHashMap<>();
+    private static final Map<String, Double> totalSpendingByUser = new ConcurrentHashMap<>();
+    private static final Map<String, Integer> salesByCompanyFinalResult = new ConcurrentHashMap<>();
+    private static final Map<String, Integer> transactionsByPaymentMethodFinalResult = new ConcurrentHashMap<>();
 
-    private static final Map<String, Integer> transactionsByCountryFinalResult = new HashMap<>();
-    private static final Map<String, Double> avgPriceByProductFinalResult = new HashMap<>();
-    private static final Map<String, Integer> salesByCompanyFinalResult = new HashMap<>();
-    private static final Map<String, Integer> transactionsByPaymentMethodFinalResult = new HashMap<>();
-
-    private static final Map<String, Double> avgSpendingByUserFinalResult = new HashMap<>();
-
-    private static final Map<String, Integer> salesByMonthYearFinalResult = new HashMap<>();
-    private static final Map<String, Integer> commonTransactionsByCityFinalResult = new HashMap<>();
-    private static final Map<String, Double> salesByCurrencyFinalResult = new HashMap<>();
+    private static final Map<String, Integer> salesByMonthYearFinalResult = new ConcurrentHashMap<>();
+    private static final Map<String, Double> salesByCurrencyFinalResult = new ConcurrentHashMap<>();
     public static void main(String[] args) {
-        File file = new File("large_dataset_1M.csv");
+        long startTime = System.currentTimeMillis();
+
+        File file = new File("large_dataset_5M.csv");
 
         long fileSize = file.length();
 
         long chunkSize = fileSize / NUM_THREADS;
 
         List<Thread> threads = new ArrayList<>();
+
+        System.out.println(chunkSize);
 
         try (RandomAccessFile raf = new RandomAccessFile(file, "r");
              FileChannel channel = raf.getChannel()) {
@@ -50,9 +50,12 @@ public class ParallelFileReader {
 
                 Thread thread = new Thread(new CSVReaderThread(start, end, channel, i + 1));
                 threads.add(thread);
-                thread.start();
 
                 start = end + 1;
+            }
+
+            for (Thread thread : threads) {
+                thread.start();
             }
 
             // Wait for all threads to finish
@@ -67,8 +70,8 @@ public class ParallelFileReader {
             }
 
             System.out.println("Media por produto: ----------------------------------");
-            for (Map.Entry<String, Double> entry : avgPriceByProductFinalResult.entrySet()) {
-                System.out.println(entry.getKey() + ": " + entry.getValue());
+            for (Map.Entry<String, Integer> entry : totalSalesByProductQuantity.entrySet()) {
+                System.out.println(entry.getKey() + ": " + totalSalesByProduct.get(entry.getKey()) / entry.getValue());
             }
 
             System.out.println("Total de vendas por empresa: ----------------------------------");
@@ -87,8 +90,9 @@ public class ParallelFileReader {
             }
 
             System.out.println("Média de gastos por usuário: ----------------------------------");
-            for (Map.Entry<String, Double> entry : avgSpendingByUserFinalResult.entrySet()) {
-                System.out.println(entry.getKey() + ": " + entry.getValue());
+            for (Map.Entry<String, Integer> entry : transactionsByUser.entrySet()) {
+                System.out.println(entry.getKey() + ": " + totalSpendingByUser.get(entry.getKey()) / entry.getValue());
+
             }
 
 
@@ -96,6 +100,10 @@ public class ParallelFileReader {
             for (Map.Entry<String, Double> entry : salesByCurrencyFinalResult.entrySet()) {
                 System.out.println(entry.getKey() + ": " + entry.getValue());
             }
+
+            long endTime = System.currentTimeMillis();
+            long executionTime = endTime - startTime;
+            System.out.println("Program execution time: " + executionTime + "ms");
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
@@ -157,19 +165,8 @@ public class ParallelFileReader {
         private long start;
         private long end;
         private FileChannel channel;
-
+        private int batchSize = 1000;
         private int i;
-
-        Map<String, Integer> transactionsByCountry = new HashMap<>();
-        Map<String, Double> totalSalesByProduct = new HashMap<>();
-        Map<String, Integer> totalSalesByProductQuantity = new HashMap<>();
-        Map<String, Integer> salesByCompany = new HashMap<>();
-        Map<String, Integer> transactionsByPaymentMethod = new HashMap<>();
-        Map<String, Integer> transactionsByUser = new HashMap<>();
-        Map<String, Integer> salesByMonthYear = new HashMap<>();
-        Map<String, Integer> commonTransactionsByCity = new HashMap<>();
-        Map<String, Double> totalSpendingByUser = new HashMap<>();
-        Map<String, Double> salesByCurrency = new HashMap<>();
 
 
         public CSVReaderThread(long start, long end, FileChannel channel, int i) {
@@ -206,49 +203,13 @@ public class ParallelFileReader {
 
                     // Process the data (parse CSV lines)
                     buffer.flip();
+                    List<String> batchLines = new ArrayList<>();
                     while (buffer.hasRemaining()) {
                         char c = (char) buffer.get();
                         if (c == '\n') {
                             // End of line reached, parse the line
-                            String line = lineBuilder.toString();
-                            // Process the CSV line
-                            String[] transaction = line.split(csvDivisor);
-
-                            String transactionId = transaction[0];
-                            String userId = transaction[1];
-                            String companyId = transaction[2];
-                            LocalDateTime transactionDate = LocalDateTime.parse(transaction[3], formatter);
-                            String productId = transaction[4];
-                            String productDescription = transaction[5];
-                            int quantity = Integer.parseInt(transaction[6]);
-                            Double pricePerUnit = Double.parseDouble(transaction[7]);
-                            String currency = transaction[8];
-                            String paymentMethod = transaction[9];
-                            String country = transaction[10];
-                            String city = transaction[11];
-
-
-                            transactionsByCountry.put(country, transactionsByCountry.getOrDefault(country, 0) + 1);
-
-                            salesByCompany.put(companyId, salesByCompany.getOrDefault(companyId, 0) + 1);
-
-                            transactionsByPaymentMethod.put(paymentMethod, transactionsByPaymentMethod.getOrDefault(paymentMethod, 0) + 1);
-
-                            String monthYear = transactionDate.getMonthValue() + "-" + transactionDate.getYear();
-                            salesByMonthYear.put(monthYear, salesByMonthYear.getOrDefault(monthYear, 0) + 1);
-
-                            commonTransactionsByCity.put(city, commonTransactionsByCity.getOrDefault(city, 0) + 1);
-
-                            double totalPrice = pricePerUnit * quantity;
-                            salesByCurrency.put(currency, salesByCurrency.getOrDefault(currency, 0.0) + totalPrice);
-
-                            totalSalesByProduct.put(productId, totalSalesByProduct.getOrDefault(currency, 0.0) + pricePerUnit);
-
-                            totalSalesByProductQuantity.put(productId, totalSalesByProductQuantity.getOrDefault(currency, 0) + 1);
-
-                            totalSpendingByUser.put(userId, totalSpendingByUser.getOrDefault(userId, 0.0) + totalPrice);
-
-                            transactionsByUser.put(userId, transactionsByUser.getOrDefault(userId, 0) + 1);
+                            batchLines.add(lineBuilder.toString());
+                            // Process the CSV lin
 
                             lineBuilder.setLength(0);
                         } else {
@@ -256,39 +217,10 @@ public class ParallelFileReader {
                         }
                     }
                     buffer.clear();
+                    processBatch(batchLines, formatter);
                 }
 
 
-                channelLock.lock();
-                for (Map.Entry<String, Integer> entry : transactionsByCountry.entrySet()) {
-                        transactionsByCountryFinalResult.put(entry.getKey(), transactionsByCountryFinalResult.getOrDefault(entry.getKey(), 0) + entry.getValue());
-                }
-
-                for (Map.Entry<String, Integer> entry : totalSalesByProductQuantity.entrySet()) {
-                    avgPriceByProductFinalResult.put(entry.getKey(), avgPriceByProductFinalResult.getOrDefault(entry.getKey(), 0.0) + (totalSalesByProduct.get(entry.getKey()) /  entry.getValue()));
-                }
-
-                for (Map.Entry<String, Integer> entry : salesByCompany.entrySet()) {
-                    salesByCompanyFinalResult.put(entry.getKey(), salesByCompanyFinalResult.getOrDefault(entry.getKey(), 0) + entry.getValue());
-                }
-
-                for (Map.Entry<String, Integer> entry : transactionsByPaymentMethod.entrySet()) {
-                    transactionsByPaymentMethodFinalResult.put(entry.getKey(), transactionsByPaymentMethodFinalResult.getOrDefault(entry.getKey(), 0) + entry.getValue());
-                }
-
-                for (Map.Entry<String, Integer> entry : salesByMonthYear.entrySet()) {
-                    salesByMonthYearFinalResult.put(entry.getKey(), salesByMonthYearFinalResult.getOrDefault(entry.getKey(), 0) + entry.getValue());
-                }
-
-                for (Map.Entry<String, Integer> entry : transactionsByUser.entrySet()) {
-                    avgSpendingByUserFinalResult.put(entry.getKey(), avgSpendingByUserFinalResult.getOrDefault(entry.getKey(), 0.0) + (totalSpendingByUser.get(entry.getKey()) /  entry.getValue()));
-                }
-
-                for (Map.Entry<String, Double> entry : salesByCurrency.entrySet()) {
-                    salesByCurrencyFinalResult.put(entry.getKey(), salesByCurrencyFinalResult.getOrDefault(entry.getKey(), 0.0) + entry.getValue());
-                }
-
-                channelLock.unlock();
                 long endTime = System.currentTimeMillis();
                 long executionTime = endTime - startTime;
                 System.out.println("Thread: " + i + " execution time: " + executionTime + "ms");
@@ -297,5 +229,102 @@ public class ParallelFileReader {
                 e.printStackTrace();
             }
         }
+
+        private void processBatch(List<String> batchLines, DateTimeFormatter formatter) {
+            // Process each line in the batch
+            for (String line : batchLines) {
+                // Parse CSV line
+                String[] transaction = line.split(",");
+
+                String transactionId = transaction[0];
+                String userId = transaction[1];
+                String companyId = transaction[2];
+                LocalDateTime transactionDate = LocalDateTime.parse(transaction[3], formatter);
+                String productId = transaction[4];
+                String productDescription = transaction[5];
+                int quantity = Integer.parseInt(transaction[6]);
+                Double pricePerUnit = Double.parseDouble(transaction[7]);
+                String currency = transaction[8];
+                String paymentMethod = transaction[9];
+                String country = transaction[10];
+                String city = transaction[11];
+
+
+                transactionsByCountryFinalResult.compute(country, (k, v) -> {
+                    if (v != null) {
+                        return 1 + v;
+                    } else {
+                        return 1; // or return a default value
+                    }
+                });
+
+                salesByCompanyFinalResult.compute(companyId, (k, v) -> {
+                    if (v != null) {
+                        return 1 + v;
+                    } else {
+                        return 1; // or return a default value
+                    }
+                });
+
+                transactionsByPaymentMethodFinalResult.compute(paymentMethod, (k, v) -> {
+                    if (v != null) {
+                        return 1 + v;
+                    } else {
+                        return 1; // or return a default value
+                    }
+                });
+
+                String monthYear = transactionDate.getMonthValue() + "-" + transactionDate.getYear();
+                salesByMonthYearFinalResult.compute(monthYear, (k, v) -> {
+                    if (v != null) {
+                        return 1 + v;
+                    } else {
+                        return 1; // or return a default value
+                    }
+                });
+
+                totalSalesByProduct.compute(productId, (k, v) -> {
+                    if (v != null) {
+                        return pricePerUnit + v;
+                    } else {
+                        return pricePerUnit; // or return a default value
+                    }
+                });
+
+                totalSalesByProductQuantity.compute(productId, (k, v) -> {
+                    if (v != null) {
+                        return 1 + v;
+                    } else {
+                        return 1; // or return a default value
+                    }
+                });
+
+                totalSpendingByUser.compute(userId, (k, v) -> {
+                    if (v != null) {
+                        return (pricePerUnit * quantity) + v;
+                    } else {
+                        return (pricePerUnit * quantity); // or return a default value
+                    }
+                });
+
+                transactionsByUser.compute(productId, (k, v) -> {
+                    if (v != null) {
+                        return 1 + v;
+                    } else {
+                        return 1; // or return a default value
+                    }
+                });
+
+                double totalPrice = pricePerUnit * quantity;
+                salesByCurrencyFinalResult.compute(currency, (k, v) -> {
+                    if (v != null) {
+                        return totalPrice + v;
+                    } else {
+                        return totalPrice; // or return a default value
+                    }
+                });
+            }
+        }
+
     }
 }
