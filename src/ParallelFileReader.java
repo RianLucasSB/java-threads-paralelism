@@ -11,7 +11,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class ParallelFileReader {
-    private static final int BUFFER_SIZE = 50000000;
+    private static final int BUFFER_SIZE = 5000000;
     private static final int NUM_THREADS = Runtime.getRuntime().availableProcessors() - 1;
     private static final Lock channelLock = new ReentrantLock();
     private static final Map<String, Integer> transactionsByCountryFinalResult = new ConcurrentHashMap<>();
@@ -69,15 +69,15 @@ public class ParallelFileReader {
                 System.out.println(entry.getKey() + ": " + entry.getValue());
             }
 
-            System.out.println("Media por produto: ----------------------------------");
-            for (Map.Entry<String, Integer> entry : totalSalesByProductQuantity.entrySet()) {
-                System.out.println(entry.getKey() + ": " + totalSalesByProduct.get(entry.getKey()) / entry.getValue());
-            }
-
-            System.out.println("Total de vendas por empresa: ----------------------------------");
-            for (Map.Entry<String, Integer> entry : salesByCompanyFinalResult.entrySet()) {
-                System.out.println(entry.getKey() + ": " + entry.getValue());
-            }
+//            System.out.println("Media por produto: ----------------------------------");
+//            for (Map.Entry<String, Integer> entry : totalSalesByProductQuantity.entrySet()) {
+//                System.out.println(entry.getKey() + ": " + totalSalesByProduct.get(entry.getKey()) / entry.getValue());
+//            }
+//
+//            System.out.println("Total de vendas por empresa: ----------------------------------");
+//            for (Map.Entry<String, Integer> entry : salesByCompanyFinalResult.entrySet()) {
+//                System.out.println(entry.getKey() + ": " + entry.getValue());
+//            }
 
             System.out.println("Quantidade de transações por método de pagamento: ----------------------------------");
             for (Map.Entry<String, Integer> entry : transactionsByPaymentMethodFinalResult.entrySet()) {
@@ -89,11 +89,11 @@ public class ParallelFileReader {
                 System.out.println(entry.getKey() + ": " + entry.getValue());
             }
 
-            System.out.println("Média de gastos por usuário: ----------------------------------");
-            for (Map.Entry<String, Integer> entry : transactionsByUser.entrySet()) {
-                System.out.println(entry.getKey() + ": " + totalSpendingByUser.get(entry.getKey()) / entry.getValue());
-
-            }
+//            System.out.println("Média de gastos por usuário: ----------------------------------");
+//            for (Map.Entry<String, Integer> entry : transactionsByUser.entrySet()) {
+//                System.out.println(entry.getKey() + ": " + totalSpendingByUser.get(entry.getKey()) / entry.getValue());
+//
+//            }
 
 
             System.out.println("Total de vendas em cada moeda: ----------------------------------");
